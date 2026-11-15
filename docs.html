@@ -44,6 +44,7 @@
 <p class="toc-title">CONTENTS</p>
 <ol>
 <li><a href="#overview">Overview</a></li>
+<li><a href="#install">Install</a></li>
 <li><a href="#quick-start">Quick start</a></li>
 <li><a href="#server">Running a server</a></li>
 <li><a href="#cli">CLI</a></li>
@@ -78,9 +79,55 @@
 <p>It requires <strong>Rust 1.89 or newer</strong> (edition 2024). Docker is optional and only needed for the five-node demo.</p>
 </section>
 
+<section id="install">
+<h2><span class="num">02</span>Install</h2>
+<p>Packages are built for 64-bit Linux (amd64) on every release. They contain the same two programs: the server and the client.</p>
+<h3>Snap</h3>
+<pre><span class="c">$</span> sudo snap install ironclad</pre>
+<p>The client is the <code>ironclad</code> command (<code>ironclad get</code>, <code>ironclad set</code>, …, same subcommands as <a href="#cli"><code>ironclad-cli</code></a>). The server is a service that stays off until it has a node id. Setting one starts it:</p>
+<pre><span class="c">$</span> sudo snap set ironclad id=1                <span class="c"># single node on 127.0.0.1:6001</span>
+<span class="c">$</span> ironclad set hello world
+<span class="k">OK</span></pre>
+<p>For a cluster, give every node the same member list and its own id. Changing a setting restarts the service.</p>
+<pre><span class="c">$</span> sudo snap set ironclad id=1 listen=0.0.0.0:6001 peer-listen=0.0.0.0:7001 \
+    members="1=10.0.0.1:6001=10.0.0.1:7001 2=10.0.0.2:6001=10.0.0.2:7001 3=10.0.0.3:6001=10.0.0.3:7001"</pre>
+<div class="table-wrap"><table>
+<thead><tr><th>Setting</th><th>Server flag</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td><code>--id</code> (required to start)</td></tr>
+<tr><td><code>members</code></td><td>one <code>--member</code> per space-separated entry</td></tr>
+<tr><td><code>listen</code></td><td><code>--listen</code></td></tr>
+<tr><td><code>peer-listen</code></td><td><code>--peer-listen</code></td></tr>
+</tbody></table></div>
+<p>Data lives in <code>/var/snap/ironclad/common/data</code>. Logs: <code>sudo snap logs ironclad.server</code>. Stop: <code>sudo snap stop --disable ironclad.server</code>.</p>
+<h3>APT (Ubuntu 22.04+, Debian 12+)</h3>
+<p>Add the signed repository once, then <code>apt</code> installs and upgrades Ironclad like any other package:</p>
+<pre><span class="c">$</span> sudo install -d -m 0755 /etc/apt/keyrings
+<span class="c">$</span> curl -fsSL https://berdfandrade.github.io/ironclad-site/apt/ironclad.gpg \
+    | sudo tee /etc/apt/keyrings/ironclad.gpg &gt; /dev/null
+<span class="c">$</span> echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/ironclad.gpg] https://berdfandrade.github.io/ironclad-site/apt stable main" \
+    | sudo tee /etc/apt/sources.list.d/ironclad.list
+<span class="c">$</span> sudo apt update &amp;&amp; sudo apt install ironclad</pre>
+<p>The repository key fingerprint is <code>64D2 3529 D30F CC28 0BFD E974 D4CE 37E4 6F48 DEFB</code>.</p>
+<p>The package installs <code>ironclad-server</code>, <code>ironclad-cli</code> and a systemd service, <code>ironclad</code>. The service is <strong>disabled after install</strong> so you can set the node's arguments before its first start. The member list cannot change once a node has data.</p>
+<pre><span class="c"># /etc/default/ironclad</span>
+IRONCLAD_ARGS="--id 1"                          <span class="c"># default: single node</span></pre>
+<pre><span class="c">$</span> sudo systemctl enable --now ironclad
+<span class="c">$</span> ironclad-cli status
+<span class="c">$</span> journalctl -u ironclad -f                     <span class="c"># logs</span></pre>
+<p>The service runs as an unprivileged dynamic user. Data lives in <code>/var/lib/ironclad</code>. Upgrades restart a running service, and it recovers its state on start.</p>
+<h3>.deb only</h3>
+<p>The same package without the repository, so no automatic upgrades:</p>
+<pre><span class="c">$</span> curl -fLO https://github.com/berdfandrade/ironclad/releases/latest/download/ironclad_amd64.deb
+<span class="c">$</span> sudo apt install ./ironclad_amd64.deb</pre>
+<p>Every version is on the <a href="https://github.com/berdfandrade/ironclad/releases">releases page</a>.</p>
+<h3>From source</h3>
+<p>Needs Rust 1.89 or newer. See the <a href="#quick-start">quick start</a>.</p>
+</section>
+
 <section id="quick-start">
-<h2><span class="num">02</span>Quick start</h2>
-<p>Build the server and the CLI:</p>
+<h2><span class="num">03</span>Quick start</h2>
+<p>From source: build the server and the CLI.</p>
 <pre><span class="c">$</span> git clone https://github.com/berdfandrade/ironclad
 <span class="c">$</span> cd ironclad
 <span class="c">$</span> cargo build --release</pre>
@@ -108,7 +155,7 @@ applied_index per node: 4004 4004 4004 4004 4004
 </section>
 
 <section id="server">
-<h2><span class="num">03</span>Running a server</h2>
+<h2><span class="num">04</span>Running a server</h2>
 <p>Every node runs one <code>ironclad-server</code> process with its own data directory. Every node needs the full member list, including itself.</p>
 <pre><span class="c">$</span> ironclad-server --id 1 --data-dir /var/lib/ironclad \
     --member 1=10.0.0.1:6001=10.0.0.1:7001 \
@@ -142,7 +189,7 @@ applied_index per node: 4004 4004 4004 4004 4004
 </section>
 
 <section id="cli">
-<h2><span class="num">04</span>CLI</h2>
+<h2><span class="num">05</span>CLI</h2>
 <pre><span class="c">$</span> ironclad-cli [-a ADDR[,ADDR...]] &lt;command&gt;</pre>
 <p><code>-a</code> / <code>--addr</code> takes the client addresses of any subset of the cluster (default <code>127.0.0.1:6001</code>). The CLI finds the leader by itself, so one address is enough. Listing more lets it keep working when that node is down.</p>
 <div class="table-wrap"><table>
@@ -178,7 +225,7 @@ p99          196ms</pre>
 </section>
 
 <section id="consistency">
-<h2><span class="num">05</span>Consistency</h2>
+<h2><span class="num">06</span>Consistency</h2>
 <h3>Writes</h3>
 <p>A <code>SET</code> or <code>DELETE</code> returns <code>OK</code> only after the entry is in the Raft log of a majority of nodes, fsynced, and applied on the leader. A write acknowledged with <code>OK</code> survives any failure that leaves a majority alive.</p>
 <h3>Reads</h3>
@@ -196,7 +243,7 @@ p99          196ms</pre>
 </section>
 
 <section id="protocol">
-<h2><span class="num">06</span>Wire protocol</h2>
+<h2><span class="num">07</span>Wire protocol</h2>
 <p>Clients talk to nodes over TCP using a small, versioned binary protocol. Any language can implement it. All integers are big-endian.</p>
 <h3>Framing</h3>
 <pre>frame    = length:u32  body          <span class="c">length excludes itself</span>
@@ -242,7 +289,7 @@ string     = len:u32  utf-8</pre>
 </section>
 
 <section id="client">
-<h2><span class="num">07</span>Rust client</h2>
+<h2><span class="num">08</span>Rust client</h2>
 <p>The crate ships an async client built on Tokio. It is the same client the CLI uses.</p>
 <pre><span class="k">use</span> ironclad::client::Client;
 <span class="k">use</span> ironclad::protocol::Consistency;
@@ -276,7 +323,7 @@ client.delete(<span class="c">"user:123"</span>).<span class="k">await</span>?;
 </section>
 
 <section id="embedded">
-<h2><span class="num">08</span>Embedded storage engine</h2>
+<h2><span class="num">09</span>Embedded storage engine</h2>
 <p>The storage engine is a standalone LSM tree. You can use it as a local, crash-safe ordered map, with no Raft and no network.</p>
 <pre><span class="k">use</span> ironclad::storage::{Db, Options, WriteBatch};
 
@@ -322,7 +369,7 @@ db.write(batch)?;
 </section>
 
 <section id="observability">
-<h2><span class="num">09</span>Observability</h2>
+<h2><span class="num">10</span>Observability</h2>
 <h3>Status and metrics</h3>
 <p><code>ironclad-cli status</code> (or a <code>STATUS</code> request) returns one <code>key=value</code> per line:</p>
 <div class="table-wrap"><table>
@@ -351,7 +398,7 @@ applied_index=4004</pre>
 </section>
 
 <section id="errors">
-<h2><span class="num">10</span>Errors and backpressure</h2>
+<h2><span class="num">11</span>Errors and backpressure</h2>
 <p>An overloaded node sheds load rather than queuing without bound. There are three layers, from the outermost in:</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Limit</th><th>Default</th><th>When exceeded</th></tr></thead>
@@ -374,7 +421,7 @@ applied_index=4004</pre>
 </section>
 
 <section id="recovery">
-<h2><span class="num">11</span>Durability and recovery</h2>
+<h2><span class="num">12</span>Durability and recovery</h2>
 <h3>Crashes</h3>
 <p>Restarting a node after a crash needs no manual step. On startup it loads the latest snapshot and Raft log, opens the storage engine (replaying its WAL), then catches up with the cluster. It may receive missing entries from the leader, or a full snapshot if the leader already compacted them away.</p>
 <ul>
@@ -395,7 +442,7 @@ applied_index=4004</pre>
 </section>
 
 <section id="testing">
-<h2><span class="num">12</span>Testing</h2>
+<h2><span class="num">13</span>Testing</h2>
 <pre><span class="c">$</span> cargo test --release                       <span class="c"># everything</span>
 <span class="c">$</span> cargo test --release --test raft_sim       <span class="c"># deterministic Raft simulation</span>
 <span class="c">$</span> cargo test --release --test cluster        <span class="c"># real processes, real sockets</span>
@@ -411,7 +458,7 @@ applied_index=4004</pre>
 </section>
 
 <section id="limitations">
-<h2><span class="num">13</span>Limitations</h2>
+<h2><span class="num">14</span>Limitations</h2>
 <p>These are deliberate scope cuts, each documented in <a href="https://github.com/berdfandrade/ironclad/blob/main/docs/adr/0005-scope-and-known-limitations.md">ADR 0005</a> with what it would take to lift it.</p>
 <ul>
 <li><strong>Static membership.</strong> Nodes cannot be added or removed while the cluster runs.</li>

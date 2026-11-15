@@ -1,0 +1,39 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Architectures: amd64
+Codename: stable
+Components: main
+Date: Sun, 15 Nov 2026 23:43:52 +0000
+Description: Ironclad distributed key-value store
+Label: Ironclad
+Origin: Ironclad
+Suite: stable
+MD5Sum:
+ f2eac59c01cd2878ede3f478e5fea0d0             1052 main/binary-amd64/Packages
+ b095535d7960bc4a9d53dd6250b39c92              703 main/binary-amd64/Packages.gz
+SHA1:
+ 0c0b6ccbd0686569dab0bc3f8e0425e565afdc27             1052 main/binary-amd64/Packages
+ a4650c7d0828e842dbe434d6f4b61fb5170820c8              703 main/binary-amd64/Packages.gz
+SHA256:
+ b41eebeb797a907d654695d56a005631facc77daa24dedc3e876297afb73ee19             1052 main/binary-amd64/Packages
+ d7679853219251b9683e0d9a5dcc35af2059614d9aa6ba291650d2f32b47efe4              703 main/binary-amd64/Packages.gz
+SHA512:
+ de8f87ca116d9234a97a0e66aebd4c114c3027068dfa1eafc37f1a8ea1bf1d500f71c037b175ce0b474ff560883936190b464e4d3360e9f028c5c3dd207f553d             1052 main/binary-amd64/Packages
+ 784992e35eda953791485072870c7d993b01ce9333f8a9fce8eefb8aa681a31a143ec94962d4d7c60061ee7d2ec30f3393082603d7d547a86fcc4f768d374564              703 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEZNI1KdMPzCgL/el01M435G9I3vsFAmr6Q7gACgkQ1M435G9I
+3vtMfg//SNkKYdMYk2xfYgKv5lIAQybIuuhDA+TChJdz8T/lNEUpQfuTlaTwhq3T
+0swKIgGyRlqYK4qrxx5ARVuk7GaA1JtLgC5UjYnS6ozbU0K6Ts91aZxydFMSWBn0
+KMj8a3WZRWw8GSh4R/3Q9IqzEdrPDhyGbkkhnvS7pwKTXoWq4SVzCAu0XF6bAv80
+G2WhKnxMNGH6GBCtK5Fa29hziWyHgIiIoFOI7SqBHEJ555TxGzNOiEdwTgy+nPdd
+ulLrxRAGzU/NjFa2r0apC+VGUuWUIlc3pAGJ7TNrNHa+Jk1IRf9a/eHDQeBENn+1
+e+fJ8rAy2Zgw9BVNujwIyj90gIeiUpxWAEKCL6WGDYd9niPWLjOIShlQQrCziAjy
+82BJsA5YZtmVej+CAWaIoMPBYMp3JUCNQpMItxOL56Vk3lzVB2fDjAcWBgYRXnQ3
+8XTzburQPmy2UVrJdBB3wdw/1x475pGMiTmuD/fCsOc6mlICNdP7sFJPOL/p2DUZ
+Hbg85UKnH/CSZ7OGZD0xz8oA85ojca866zBxD8pTmSo9Zzw0lYu0QNvOq/BvvDGG
+eemc9vvHvENwM9zEQA0msiSQcHXeSUkvexZIzeAOr+MOl5eOlyH4A3baHFBMhXKO
+BBbHID7EloSdqAYhWreXL97YU7PpYkDn4jaoTgm2NseSlnpRthk=
+=/mb9
+-----END PGP SIGNATURE-----
