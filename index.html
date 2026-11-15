@@ -8,23 +8,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 140'%3E%3Cpath d='M60 6 L110 22 V68 C110 102 89 123 60 134 C31 123 10 102 10 68 V22 Z' fill='%2314161A' stroke='%23C9CED6' stroke-width='12'/%3E%3Crect x='30' y='42' width='60' height='16' rx='2' fill='%23E8622C'/%3E%3Crect x='36' y='70' width='48' height='16' rx='2' fill='%23C9CED6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
-<style>
-:root{color-scheme:dark;--bg:#14161A;--bg-alt:#181B20;--term-bg:#0E1013;--card-hi:#1B1E23;--border:#2A2E35;--border-strong:#3A4049;--text:#F2F4F7;--text-2:#B4BCC6;--steel:#C9CED6;--muted:#9AA3AE;--dim:#6B7480;--accent:#E8622C;--on-accent:#14161A;--link:#C9CED6;--link-hover:#FFFFFF}
-@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){color-scheme:light;--bg:#F7F8FA;--bg-alt:#EDEFF2;--term-bg:#FFFFFF;--card-hi:#FFF4EE;--border:#D8DCE2;--border-strong:#BFC5CD;--text:#14161A;--text-2:#3E4652;--steel:#5B6470;--muted:#5F6874;--dim:#8A929C;--accent:#C2410C;--on-accent:#FFFFFF;--link:#2E343C;--link-hover:#000000}}
-:root[data-theme="light"]{color-scheme:light;--bg:#F7F8FA;--bg-alt:#EDEFF2;--term-bg:#FFFFFF;--card-hi:#FFF4EE;--border:#D8DCE2;--border-strong:#BFC5CD;--text:#14161A;--text-2:#3E4652;--steel:#5B6470;--muted:#5F6874;--dim:#8A929C;--accent:#C2410C;--on-accent:#FFFFFF;--link:#2E343C;--link-hover:#000000}
-body{margin:0;background:var(--bg)}
-a{color:var(--link)}a:hover{color:var(--link-hover)}
-#theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border:1px solid var(--border-strong);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}
-#theme-toggle[hidden]{display:none}
-#theme-toggle:hover{border-color:var(--text-2)}
-#theme-toggle:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-:root[data-theme="light"] .icon-sun,:root:not([data-theme="light"]) .icon-moon{display:none}
-</style>
-<script>
-(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}
-if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}
-document.documentElement.dataset.theme=t})();
-</script>
+<link rel="stylesheet" href="site.css">
+<script src="theme.js"></script>
 </head>
 <body>
 <div style="background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 18px; line-height: 1.55">
@@ -46,6 +31,7 @@ document.documentElement.dataset.theme=t})();
 <a href="#guarantees" style="text-decoration: none">Guarantees</a>
 <a href="#roadmap" style="text-decoration: none">Roadmap</a>
 <a href="#reading" style="text-decoration: none">Reading</a>
+<a href="docs.html" style="text-decoration: none">Docs</a>
 <a href="https://github.com/berdfandrade/ironclad" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 8px; text-decoration: none; color: var(--text)">GitHub</a>
 <button type="button" id="theme-toggle" hidden aria-label="Switch theme" title="Switch theme">
 <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
@@ -231,6 +217,7 @@ document.documentElement.dataset.theme=t})();
 <span>Ironclad · a project by Bernardo</span>
 </div>
 <div style="display: flex; flex-wrap: wrap; gap: 24px">
+<a href="docs.html">Docs</a>
 <a href="https://github.com/berdfandrade/ironclad">GitHub</a>
 <a href="#architecture">Architecture</a>
 <a href="#roadmap">Roadmap</a>
@@ -239,11 +226,5 @@ document.documentElement.dataset.theme=t})();
 </footer>
 
 </div>
-<script>
-(function(){var b=document.getElementById("theme-toggle"),r=document.documentElement;
-function label(){var next=r.dataset.theme==="light"?"dark":"light";b.setAttribute("aria-label","Switch to "+next+" theme");b.title="Switch to "+next+" theme"}
-b.hidden=false;label();
-b.addEventListener("click",function(){r.dataset.theme=r.dataset.theme==="light"?"dark":"light";try{localStorage.setItem("theme",r.dataset.theme)}catch(e){}label()})})();
-</script>
 </body>
 </html>

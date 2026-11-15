@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ironclad Docs</title>
+<meta name="description" content="Ironclad documentation: running a cluster, the CLI, consistency guarantees, the binary protocol, the Rust client, the embedded storage engine, metrics and recovery.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 140'%3E%3Cpath d='M60 6 L110 22 V68 C110 102 89 123 60 134 C31 123 10 102 10 68 V22 Z' fill='%2314161A' stroke='%23C9CED6' stroke-width='12'/%3E%3Crect x='30' y='42' width='60' height='16' rx='2' fill='%23E8622C'/%3E%3Crect x='36' y='70' width='48' height='16' rx='2' fill='%23C9CED6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="site.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<div class="docs">
+
+<header style="border-bottom: 1px solid var(--border)">
+<nav aria-label="Main" style="max-width: 1180px; margin: 0 auto; padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px">
+<a href="./" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text)">
+<svg width="30" height="35" viewBox="0 0 120 140" aria-hidden="true">
+<path d="M60 6 L110 22 V68 C110 102 89 123 60 134 C31 123 10 102 10 68 V22 Z" fill="none" stroke-width="9" stroke-linejoin="round" style="stroke: var(--steel)"></path>
+<rect x="32" y="42" width="56" height="11" rx="2" style="fill: var(--accent)"></rect>
+<rect x="32" y="62" width="56" height="11" rx="2" style="fill: var(--steel)"></rect>
+<rect x="40" y="82" width="40" height="11" rx="2" style="fill: var(--steel)"></rect>
+</svg>
+<span style="font-size: 22px; font-weight: 700; letter-spacing: 0.06em">IRONCLAD</span>
+<span class="mono" style="font-size: 13px; padding: 3px 8px; border: 1px solid var(--border-strong); border-radius: 6px; color: var(--muted)">docs</span>
+</a>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; font-size: 16px">
+<a href="./" style="text-decoration: none">Overview</a>
+<a href="docs.html" aria-current="page" style="text-decoration: none; color: var(--text)">Docs</a>
+<a href="https://github.com/berdfandrade/ironclad" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid var(--border-strong); border-radius: 8px; text-decoration: none; color: var(--text)">GitHub</a>
+<button type="button" id="theme-toggle" hidden aria-label="Switch theme" title="Switch theme">
+<svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+<svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+</button>
+</div>
+</nav>
+</header>
+
+<div class="docs-layout">
+
+<nav class="toc" aria-label="Documentation">
+<p class="toc-title">CONTENTS</p>
+<ol>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#quick-start">Quick start</a></li>
+<li><a href="#server">Running a server</a></li>
+<li><a href="#cli">CLI</a></li>
+<li><a href="#consistency">Consistency</a></li>
+<li><a href="#protocol">Wire protocol</a></li>
+<li><a href="#client">Rust client</a></li>
+<li><a href="#embedded">Embedded engine</a></li>
+<li><a href="#observability">Observability</a></li>
+<li><a href="#errors">Errors and backpressure</a></li>
+<li><a href="#recovery">Durability and recovery</a></li>
+<li><a href="#testing">Testing</a></li>
+<li><a href="#limitations">Limitations</a></li>
+</ol>
+</nav>
+
+<main class="docs-main">
+
+<div class="docs-intro">
+<div class="eyebrow">DOCUMENTATION</div>
+<h1>Using Ironclad</h1>
+<p class="lede">Everything you need to run a cluster, talk to it, embed the storage engine in your own program, and understand what it guarantees when things fail.</p>
+</div>
+
+<section id="overview">
+<h2><span class="num">01</span>Overview</h2>
+<p>Ironclad is a key-value store. Keys and values are arbitrary bytes. It supports three operations: <code>GET</code>, <code>SET</code> and <code>DELETE</code>. You can use it in three ways:</p>
+<div class="cards">
+<a class="card" href="#server"><strong>As a cluster</strong><span>Run <code>ironclad-server</code> on 3 or 5 machines. Data is replicated with Raft and survives the loss of a minority.</span></a>
+<a class="card" href="#client"><strong>As a client</strong><span>Talk to the cluster with <code>ironclad-cli</code>, the async Rust <code>Client</code>, or any language that speaks the binary protocol.</span></a>
+<a class="card" href="#embedded"><strong>As a library</strong><span>Open the LSM storage engine directly in your Rust program, with no network and no cluster.</span></a>
+</div>
+<p>It requires <strong>Rust 1.89 or newer</strong> (edition 2024). Docker is optional and only needed for the five-node demo.</p>
+</section>
+
+<section id="quick-start">
+<h2><span class="num">02</span>Quick start</h2>
+<p>Build the server and the CLI:</p>
+<pre><span class="c">$</span> git clone https://github.com/berdfandrade/ironclad
+<span class="c">$</span> cd ironclad
+<span class="c">$</span> cargo build --release</pre>
+<h3>A single node</h3>
+<p>Without <code>--member</code> flags the node forms a cluster of one, listening for clients on <code>127.0.0.1:6001</code>:</p>
+<pre><span class="c">$</span> ./target/release/ironclad-server --id 1 --data-dir ./data/single</pre>
+<pre><span class="c">$</span> ./target/release/ironclad-cli set hello world
+<span class="k">OK</span>
+<span class="c">$</span> ./target/release/ironclad-cli get hello
+world</pre>
+<h3>Three nodes on localhost</h3>
+<p>The script starts N nodes. Node <em>i</em> serves clients on <code>127.0.0.1:600i</code> and peers on <code>127.0.0.1:700i</code>. Logs go to <code>./data/&lt;id&gt;/server.log</code>. Ctrl-C stops every node.</p>
+<pre><span class="c">$</span> scripts/local-cluster.sh 3</pre>
+<pre><span class="c">$</span> ./target/release/ironclad-cli -a 127.0.0.1:6001,127.0.0.1:6002,127.0.0.1:6003 status</pre>
+<p>Extra server flags can be passed through <code>IRONCLAD_FLAGS</code>, for example <code>IRONCLAD_FLAGS=--storage-fsync scripts/local-cluster.sh 3</code>.</p>
+<h3>Five nodes in Docker: the failover demo</h3>
+<pre><span class="c">$</span> scripts/failover-demo.sh</pre>
+<p>The script starts five containers and writes 5,000 records (set <code>RECORDS</code> to change that). It then kills the leader with <code>SIGKILL</code>, waits for a new election, restarts the old leader with its old data, and checks that every node reaches the same applied index.</p>
+<pre><span class="c">== 3. killing the leader (node4) with SIGKILL</span>
+<span class="c">== 4. waiting for a new leader</span>
+new leader: node3 (term 2) after 1933 ms
+<span class="c">== 6. verifying convergence</span>
+applied_index per node: 4004 4004 4004 4004 4004
+<span class="k">all five nodes converged to the same state</span></pre>
+</section>
+
+<section id="server">
+<h2><span class="num">03</span>Running a server</h2>
+<p>Every node runs one <code>ironclad-server</code> process with its own data directory. Every node needs the full member list, including itself.</p>
+<pre><span class="c">$</span> ironclad-server --id 1 --data-dir /var/lib/ironclad \
+    --member 1=10.0.0.1:6001=10.0.0.1:7001 \
+    --member 2=10.0.0.2:6001=10.0.0.2:7001 \
+    --member 3=10.0.0.3:6001=10.0.0.3:7001</pre>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>--id</code></td><td>required</td><td>This node's id. Non-zero and unique in the cluster.</td></tr>
+<tr><td><code>--data-dir</code></td><td>required</td><td>Where the storage engine and the Raft log live.</td></tr>
+<tr><td><code>--member</code></td><td>—</td><td><code>id=client_addr=peer_addr</code>. Repeat once per member. Omit for a single node.</td></tr>
+<tr><td><code>--listen</code></td><td>own <code>client_addr</code></td><td>Bind address for clients, when it differs from the advertised one (e.g. <code>0.0.0.0:6001</code>).</td></tr>
+<tr><td><code>--peer-listen</code></td><td>own <code>peer_addr</code></td><td>Bind address for other nodes.</td></tr>
+<tr><td><code>--tick-ms</code></td><td>50</td><td>Raft tick interval in milliseconds.</td></tr>
+<tr><td><code>--election-ticks</code></td><td>10</td><td>Election timeout in ticks, randomized between N and 2N (500–1000 ms by default). Heartbeats go out every tick.</td></tr>
+<tr><td><code>--compact-threshold</code></td><td>10000</td><td>Compact the Raft log into a snapshot after this many applied entries.</td></tr>
+<tr><td><code>--storage-fsync</code></td><td>off</td><td>Also fsync the storage engine on every applied batch. Not needed for durability, since the Raft log is fsynced. Costs one extra fsync per batch.</td></tr>
+</tbody></table></div>
+<div class="note"><strong>Addresses in <code>--member</code> are advertised addresses.</strong> They go to clients in leader redirects, so they must be reachable from wherever clients run. In Docker Compose the client address is the host-mapped port and the peer address is the container name.</div>
+<h3>Cluster size</h3>
+<p>A cluster of N nodes stays available while a majority is up: 3 nodes tolerate 1 failure, 5 nodes tolerate 2. Membership is fixed at startup. Use an odd number of nodes, since an even number adds no extra tolerance.</p>
+<h3>Data directory</h3>
+<pre>&lt;data-dir&gt;/
+  raft/raft.state   <span class="c">term + vote, checksummed, replaced atomically</span>
+  raft/raft.log     <span class="c">snapshot header + log entries</span>
+  db/LOCK           <span class="c">exclusive lock: one process per directory</span>
+  db/MANIFEST       <span class="c">live SSTables + WAL replay start</span>
+  db/000042.wal     <span class="c">write-ahead log</span>
+  db/000041.sst     <span class="c">immutable sorted table</span></pre>
+<p>Starting a second process on the same directory fails immediately instead of corrupting it.</p>
+</section>
+
+<section id="cli">
+<h2><span class="num">04</span>CLI</h2>
+<pre><span class="c">$</span> ironclad-cli [-a ADDR[,ADDR...]] &lt;command&gt;</pre>
+<p><code>-a</code> / <code>--addr</code> takes the client addresses of any subset of the cluster (default <code>127.0.0.1:6001</code>). The CLI finds the leader by itself, so one address is enough. Listing more lets it keep working when that node is down.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Command</th><th>Prints</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>get &lt;key&gt;</code></td><td>value or <code>(nil)</code></td><td>Linearizable read, confirmed by the leader.</td></tr>
+<tr><td><code>get &lt;key&gt; --local</code></td><td>value or <code>(nil)</code></td><td>Read from the connected node without contacting the leader. Fast, possibly stale.</td></tr>
+<tr><td><code>set &lt;key&gt; &lt;value&gt;</code></td><td><code>OK</code></td><td>Write a key. Returns once a majority has it on disk.</td></tr>
+<tr><td><code>del &lt;key&gt;</code></td><td><code>OK</code></td><td>Delete a key. Deleting a missing key is not an error.</td></tr>
+<tr><td><code>ping</code></td><td><code>PONG</code></td><td>Check that a node answers.</td></tr>
+<tr><td><code>status</code></td><td><code>key=value</code> lines</td><td>Status of every node given in <code>-a</code>. See <a href="#observability">Observability</a>.</td></tr>
+<tr><td><code>bench</code></td><td>report</td><td>Closed-loop load test.</td></tr>
+</tbody></table></div>
+<p>On failure the CLI prints <code>error: …</code> to stderr and exits with status 1.</p>
+<h3>Benchmarking</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>--ops</code></td><td>20000</td><td>Total operations.</td></tr>
+<tr><td><code>--concurrency</code></td><td>32</td><td>Concurrent clients, each with its own connection.</td></tr>
+<tr><td><code>--value-size</code></td><td>100</td><td>Value size in bytes.</td></tr>
+<tr><td><code>--read-ratio</code></td><td>0.0</td><td>Fraction of operations that are linearizable reads.</td></tr>
+<tr><td><code>--keys</code></td><td>10000</td><td>Size of the key space.</td></tr>
+</tbody></table></div>
+<pre><span class="c">$</span> ironclad-cli -a 127.0.0.1:6001,127.0.0.1:6002,127.0.0.1:6003 bench --concurrency 64
+<span class="c"># abridged</span>
+throughput   1076 ops/s
+p50          52.7ms
+p95          147ms
+p99          196ms</pre>
+<p>The full report also prints the operation count, elapsed time, p99.9 and max.</p>
+<p>Measured on three local nodes with a disk whose fsync takes about 10 ms. Latency is dominated by fsync, so expect very different numbers on other hardware.</p>
+</section>
+
+<section id="consistency">
+<h2><span class="num">05</span>Consistency</h2>
+<h3>Writes</h3>
+<p>A <code>SET</code> or <code>DELETE</code> returns <code>OK</code> only after the entry is in the Raft log of a majority of nodes, fsynced, and applied on the leader. A write acknowledged with <code>OK</code> survives any failure that leaves a majority alive.</p>
+<h3>Reads</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Mode</th><th>Guarantee</th><th>Cost</th></tr></thead>
+<tbody>
+<tr><td>Linearizable (default)</td><td>Sees every write acknowledged before the read started.</td><td>Served by the leader. It confirms its leadership with a quorum (ReadIndex), then waits until it has applied up to the commit index. No log entry is written.</td></tr>
+<tr><td>Local (<code>--local</code>)</td><td>Sees some earlier state. May be stale, never torn.</td><td>Served by whichever node you are connected to, with no network round trip.</td></tr>
+</tbody></table></div>
+<h3>Exactly-once writes</h3>
+<p>Every write carries a <code>(client_id, seq)</code> pair. Each node remembers the last <code>seq</code> applied per client, and that record is stored in the same atomic batch as the data. A retried write with the same pair is acknowledged but not applied twice, even across a leader change. The Rust client and the CLI do this for you. <code>client_id = 0</code> opts out.</p>
+<div class="note"><strong>A <code>TIMEOUT</code> means the outcome is unknown.</strong> The write may or may not have been committed. Retrying with the same <code>seq</code> is safe. Retrying with a new one may apply it twice.</div>
+<h3>Partitions</h3>
+<p>A leader that cannot reach a majority steps down by itself after an election timeout (check-quorum). Clients on the minority side then get <code>NOT_LEADER</code> or <code>TIMEOUT</code>, never a stale linearizable read. When the partition heals, the minority nodes catch up from the leader's log, or from a snapshot if the log was already compacted.</p>
+</section>
+
+<section id="protocol">
+<h2><span class="num">06</span>Wire protocol</h2>
+<p>Clients talk to nodes over TCP using a small, versioned binary protocol. Any language can implement it. All integers are big-endian.</p>
+<h3>Framing</h3>
+<pre>frame    = length:u32  body          <span class="c">length excludes itself</span>
+request  = version:u8=1  request_id:u64  op:u8  args
+response = version:u8=1  request_id:u64  status:u8  payload
+key, value = len:u32  bytes
+string     = len:u32  utf-8</pre>
+<p>The response echoes the <code>request_id</code>. Requests on one connection run strictly in order, so a client may pipeline several requests and match the responses by id. For parallelism, open more connections.</p>
+<h3>Requests</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Op</th><th>Code</th><th>Arguments</th></tr></thead>
+<tbody>
+<tr><td><code>GET</code></td><td>1</td><td><code>consistency:u8</code> (0 = linearizable, 1 = local), <code>key</code></td></tr>
+<tr><td><code>SET</code></td><td>2</td><td><code>client_id:u64</code>, <code>seq:u64</code>, <code>key</code>, <code>value</code></td></tr>
+<tr><td><code>DELETE</code></td><td>3</td><td><code>client_id:u64</code>, <code>seq:u64</code>, <code>key</code></td></tr>
+<tr><td><code>PING</code></td><td>4</td><td>—</td></tr>
+<tr><td><code>STATUS</code></td><td>5</td><td>—</td></tr>
+</tbody></table></div>
+<h3>Responses</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Status</th><th>Code</th><th>Payload</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>OK</code></td><td>0</td><td>—</td><td>Write committed, or ping answered.</td></tr>
+<tr><td><code>VALUE</code></td><td>1</td><td><code>value</code></td><td>The key exists.</td></tr>
+<tr><td><code>NOT_FOUND</code></td><td>2</td><td>—</td><td>The key does not exist.</td></tr>
+<tr><td><code>NOT_LEADER</code></td><td>3</td><td><code>has_hint:u8</code> [<code>addr:string</code>]</td><td>Retry on the hinted leader, or on another node if there is no hint.</td></tr>
+<tr><td><code>BUSY</code></td><td>4</td><td>—</td><td>Backpressure: nothing was done. Retry later.</td></tr>
+<tr><td><code>TIMEOUT</code></td><td>5</td><td>—</td><td>Outcome unknown. Retry with the same <code>seq</code>.</td></tr>
+<tr><td><code>ERROR</code></td><td>6</td><td><code>message:string</code></td><td>Invalid request or internal error. Do not retry unchanged.</td></tr>
+<tr><td><code>STATUS</code></td><td>7</td><td><code>text:string</code></td><td>Reply to <code>STATUS</code>: <code>key=value</code> lines.</td></tr>
+</tbody></table></div>
+<h3>Limits</h3>
+<ul>
+<li>Keys: 1 to 65,536 bytes. Keys starting with byte <code>0x00</code> are reserved for internal metadata and rejected.</li>
+<li>Values: up to 4 MiB.</li>
+<li>Frames: up to 4 MiB + 65 KiB. Larger frames close the connection.</li>
+</ul>
+<h3>Example: <code>PING</code></h3>
+<pre><span class="c"># request: length=10, version=1, request_id=1, op=4</span>
+00 00 00 0a  01  00 00 00 00 00 00 00 01  04
+<span class="c"># response: length=10, version=1, request_id=1, status=OK</span>
+00 00 00 0a  01  00 00 00 00 00 00 00 01  00</pre>
+</section>
+
+<section id="client">
+<h2><span class="num">07</span>Rust client</h2>
+<p>The crate ships an async client built on Tokio. It is the same client the CLI uses.</p>
+<pre><span class="k">use</span> ironclad::client::Client;
+<span class="k">use</span> ironclad::protocol::Consistency;
+
+<span class="k">let mut</span> client = Client::new(vec![
+    <span class="c">"127.0.0.1:6001"</span>.into(),
+    <span class="c">"127.0.0.1:6002"</span>.into(),
+    <span class="c">"127.0.0.1:6003"</span>.into(),
+]);
+
+client.set(<span class="c">"user:123"</span>, <span class="c">r#"{"name":"Bernardo"}"#</span>).<span class="k">await</span>?;
+<span class="k">let</span> value = client.get(<span class="c">"user:123"</span>, Consistency::Linearizable).<span class="k">await</span>?; <span class="c">// Option&lt;Bytes&gt;</span>
+client.delete(<span class="c">"user:123"</span>).<span class="k">await</span>?;
+<span class="k">let</span> status = client.status().<span class="k">await</span>?;                             <span class="c">// key=value text</span></pre>
+<h3>What it handles for you</h3>
+<ul>
+<li><strong>Leader discovery.</strong> It follows <code>NOT_LEADER</code> hints straight away, up to three times in a row. It moves to the next address when a node is unreachable or has no leader.</li>
+<li><strong>Retries.</strong> <code>BUSY</code>, <code>TIMEOUT</code> and connection errors are retried with exponential backoff from 20 ms up to 500 ms.</li>
+<li><strong>Exactly-once.</strong> Each <code>Client</code> picks a random <code>client_id</code> and increments <code>seq</code> per write, so retries are deduplicated by the cluster.</li>
+<li><strong>Deadline.</strong> <code>op_timeout</code> (10 s by default, public field) bounds each operation across all retries.</li>
+</ul>
+<h3>Errors</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Variant</th><th>When</th></tr></thead>
+<tbody>
+<tr><td><code>ClientError::Unavailable { attempts, last }</code></td><td>The deadline ran out. <code>last</code> is the last reason, e.g. <code>no leader (election in progress)</code>.</td></tr>
+<tr><td><code>ClientError::Server(msg)</code></td><td>The server answered <code>ERROR</code>, e.g. an invalid key.</td></tr>
+<tr><td><code>ClientError::Protocol(msg)</code></td><td>The server sent something unexpected.</td></tr>
+</tbody></table></div>
+<p>A <code>Client</code> uses one connection and runs one operation at a time. Use one client per task for concurrency.</p>
+</section>
+
+<section id="embedded">
+<h2><span class="num">08</span>Embedded storage engine</h2>
+<p>The storage engine is a standalone LSM tree. You can use it as a local, crash-safe ordered map, with no Raft and no network.</p>
+<pre><span class="k">use</span> ironclad::storage::{Db, Options, WriteBatch};
+
+<span class="k">let</span> db = Db::open(<span class="c">"./data/embedded"</span>, Options::default())?;
+db.put(<span class="c">"user:123"</span>, <span class="c">r#"{"name":"Bernardo"}"#</span>)?;
+
+<span class="k">let mut</span> batch = WriteBatch::new();   <span class="c">// atomic: all or nothing</span>
+batch.put(<span class="c">"a"</span>, <span class="c">"1"</span>);
+batch.delete(<span class="c">"b"</span>);
+db.write(batch)?;
+
+<span class="k">assert_eq!</span>(db.get(<span class="k">b</span><span class="c">"a"</span>)?.as_deref(), Some(&amp;<span class="k">b</span><span class="c">"1"</span>[..]));
+<span class="k">for</span> entry <span class="k">in</span> db.iter() {             <span class="c">// sorted, point-in-time view</span>
+    <span class="k">let</span> (key, value) = entry?;
+}</pre>
+<h3>API</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Method</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>Db::open(dir, opts)</code></td><td>Open or create a database. Replays the WAL and fails if another process holds the directory.</td></tr>
+<tr><td><code>put(key, value)</code></td><td>Insert or overwrite one key.</td></tr>
+<tr><td><code>delete(key)</code></td><td>Remove one key (writes a tombstone).</td></tr>
+<tr><td><code>write(batch)</code></td><td>Apply a <code>WriteBatch</code> atomically: readers and crash recovery see all of it or none of it.</td></tr>
+<tr><td><code>get(key)</code></td><td><code>Option&lt;Bytes&gt;</code>. Checks the memtables, then SSTables newest first, skipping tables whose bloom filter rules the key out.</td></tr>
+<tr><td><code>iter()</code></td><td>All live keys in order, from a consistent snapshot. Writes during iteration are not visible.</td></tr>
+<tr><td><code>sync()</code></td><td>fsync the WAL. Only needed with <code>sync_writes: false</code>.</td></tr>
+<tr><td><code>flush()</code></td><td>Write the memtable to an SSTable now.</td></tr>
+<tr><td><code>compact()</code></td><td>Merge all SSTables into one, dropping overwritten values and tombstones.</td></tr>
+<tr><td><code>stats()</code></td><td><code>DbStats</code>: tables, table_bytes, table_entries, memtable_bytes, flushes, compactions, write_stalls.</td></tr>
+</tbody></table></div>
+<p><code>Db</code> is <code>Send + Sync</code>, so share it between threads behind an <code>Arc</code>. Flushes and compactions run on a background thread. Readers never wait for them.</p>
+<h3>Options</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>memtable_size</code></td><td>4 MiB</td><td>Memtable size that triggers a flush to an SSTable.</td></tr>
+<tr><td><code>sync_writes</code></td><td><code>true</code></td><td>fsync the WAL on every write. With <code>false</code>, a process crash still loses nothing, but power loss may drop the most recent writes.</td></tr>
+<tr><td><code>block_size</code></td><td>4096</td><td>Target SSTable data block size in bytes. Every block is checksummed.</td></tr>
+<tr><td><code>bloom_bits_per_key</code></td><td>10</td><td>Bloom filter size, about a 1% false-positive rate.</td></tr>
+<tr><td><code>compaction_trigger</code></td><td>4</td><td>Number of SSTables that triggers a background compaction.</td></tr>
+</tbody></table></div>
+<div class="note"><strong>Write stalls.</strong> If the memtable fills while the previous one is still being flushed, writers wait for the flush. This is backpressure, not an error. It is counted in <code>write_stalls</code>.</div>
+</section>
+
+<section id="observability">
+<h2><span class="num">09</span>Observability</h2>
+<h3>Status and metrics</h3>
+<p><code>ironclad-cli status</code> (or a <code>STATUS</code> request) returns one <code>key=value</code> per line:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Key</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>role</code>, <code>term</code>, <code>leader</code></td><td>Who this node is, whether it is <code>leader</code>, <code>follower</code> or <code>candidate</code>, and who it thinks leads (<code>none</code> during an election).</td></tr>
+<tr><td><code>commit_index</code></td><td>Highest log index known to be on a majority.</td></tr>
+<tr><td><code>applied_index</code></td><td>Highest index applied to storage. Equal on all nodes means converged.</td></tr>
+<tr><td><code>last_index</code></td><td>Last entry in this node's log, committed or not.</td></tr>
+<tr><td><code>snapshot_index</code></td><td>Index the log was last compacted up to.</td></tr>
+<tr><td><code>pending_writes</code>, <code>pending_reads</code></td><td>Requests waiting for commit or for a ReadIndex round.</td></tr>
+<tr><td><code>db_tables</code>, <code>db_table_bytes</code>, <code>db_table_entries</code>, <code>db_memtable_bytes</code></td><td>Storage engine size.</td></tr>
+<tr><td><code>db_flushes</code>, <code>db_compactions</code>, <code>db_write_stalls</code></td><td>Storage engine activity counters.</td></tr>
+<tr><td><code>requests</code>, <code>reads</code>, <code>writes</code>, <code>errors</code></td><td>Client request counters since start.</td></tr>
+<tr><td><code>busy</code>, <code>timeouts</code></td><td>Requests rejected by backpressure or past their deadline.</td></tr>
+<tr><td><code>peer_messages_dropped</code></td><td>Raft messages dropped because a peer's send queue was full (Raft retransmits them).</td></tr>
+</tbody></table></div>
+<p>The output is plain text, so a scraper can turn it into Prometheus or any other format:</p>
+<pre><span class="c">$</span> ironclad-cli -a 127.0.0.1:6002 status | grep -E '^(role|term|applied_index)='
+role=follower
+term=2
+applied_index=4004</pre>
+<h3>Logs and tracing</h3>
+<p>The server logs structured events with <code>tracing</code> to stderr: startup, elections, new leaders, snapshot installs and peer errors. The level is set with <code>RUST_LOG</code> (default <code>info</code>):</p>
+<pre><span class="c">$</span> RUST_LOG=debug ironclad-server --id 1 --data-dir ./data/single</pre>
+</section>
+
+<section id="errors">
+<h2><span class="num">10</span>Errors and backpressure</h2>
+<p>An overloaded node sheds load rather than queuing without bound. There are three layers, from the outermost in:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Limit</th><th>Default</th><th>When exceeded</th></tr></thead>
+<tbody>
+<tr><td>Open client connections</td><td>1024</td><td>New connections wait in the TCP accept backlog.</td></tr>
+<tr><td>Queue into the Raft loop</td><td>16,384 events</td><td>The request is answered <code>BUSY</code> straight away. Nothing was done.</td></tr>
+<tr><td>Per-request deadline</td><td>5 s</td><td><code>TIMEOUT</code>: the request may still complete.</td></tr>
+</tbody></table></div>
+<p>Inside the storage engine, a full memtable stalls writers until the previous flush finishes (see <a href="#embedded">write stalls</a>).</p>
+<h3>What a client should do</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Response</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td><code>NOT_LEADER</code> with hint</td><td>Reconnect to the hinted address and resend.</td></tr>
+<tr><td><code>NOT_LEADER</code> without hint</td><td>An election is in progress. Try another node after a short pause.</td></tr>
+<tr><td><code>BUSY</code></td><td>Back off and retry.</td></tr>
+<tr><td><code>TIMEOUT</code></td><td>Retry with the same <code>(client_id, seq)</code>.</td></tr>
+<tr><td><code>ERROR</code></td><td>Fix the request. Retrying unchanged gives the same error.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="recovery">
+<h2><span class="num">11</span>Durability and recovery</h2>
+<h3>Crashes</h3>
+<p>Restarting a node after a crash needs no manual step. On startup it loads the latest snapshot and Raft log, opens the storage engine (replaying its WAL), then catches up with the cluster. It may receive missing entries from the leader, or a full snapshot if the leader already compacted them away.</p>
+<ul>
+<li><strong>Process crash</strong> (kill -9, panic): nothing acknowledged is lost.</li>
+<li><strong>Power loss:</strong> the Raft log is fsynced before any acknowledgement. The storage engine may roll back to an earlier batch. The applied index is stored in the same batch, so it rolls back too, and the missing entries are re-applied from the Raft log.</li>
+</ul>
+<h3>Torn writes and corruption</h3>
+<p>Every log record, SSTable block, manifest and Raft state file has a CRC32 checksum. On recovery the first invalid record is classified:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Case</th><th>What happens</th></tr></thead>
+<tbody>
+<tr><td>Torn tail: the last record is cut short or zero-filled</td><td>Expected after a crash mid-append. The valid prefix is kept and the tail is truncated.</td></tr>
+<tr><td>A bad record followed by more data</td><td>A crash cannot produce this. The node refuses to start with a <code>Corruption</code> error naming the file, and nothing is silently discarded.</td></tr>
+<tr><td>A bad SSTable block on read</td><td>The read fails with <code>Corruption</code> rather than return wrong data.</td></tr>
+</tbody></table></div>
+<p>Files that change (the manifest and the Raft state) are replaced atomically: write a temporary file, fsync, rename, fsync the directory. A crash leaves either the old version or the new one.</p>
+<div class="note"><strong>A node that refuses to start leaves its files untouched</strong> so they can be inspected. The rest of the cluster keeps serving as long as a majority is up.</div>
+</section>
+
+<section id="testing">
+<h2><span class="num">12</span>Testing</h2>
+<pre><span class="c">$</span> cargo test --release                       <span class="c"># everything</span>
+<span class="c">$</span> cargo test --release --test raft_sim       <span class="c"># deterministic Raft simulation</span>
+<span class="c">$</span> cargo test --release --test cluster        <span class="c"># real processes, real sockets</span>
+<span class="c">$</span> cargo test --release --test storage        <span class="c"># crash, corruption, concurrency</span>
+<span class="c">$</span> cargo bench                                <span class="c"># storage engine micro-benchmarks</span></pre>
+<div class="table-wrap"><table>
+<thead><tr><th>Suite</th><th>What it proves</th></tr></thead>
+<tbody>
+<tr><td><code>raft_sim</code></td><td>60 seeded runs on a virtual clock with message loss, reordering, partitions and crashes. Each step checks election safety, state-machine safety, durability of acknowledged writes and read linearizability. A failure replays from its seed.</td></tr>
+<tr><td><code>cluster</code></td><td>The failover demo as a test: five real server processes, the leader killed with <code>SIGKILL</code> and restarted, then convergence checked.</td></tr>
+<tr><td><code>storage</code></td><td>Recovery after simulated crashes and torn writes, detection of flipped bytes, readers never seeing a partial batch under concurrent writes and flushes, and property tests (Proptest) against a <code>BTreeMap</code> model.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="limitations">
+<h2><span class="num">13</span>Limitations</h2>
+<p>These are deliberate scope cuts, each documented in <a href="https://github.com/berdfandrade/ironclad/blob/main/docs/adr/0005-scope-and-known-limitations.md">ADR 0005</a> with what it would take to lift it.</p>
+<ul>
+<li><strong>Static membership.</strong> Nodes cannot be added or removed while the cluster runs.</li>
+<li><strong>No security on the wire.</strong> Neither port authenticates or encrypts. Run Ironclad on a private network.</li>
+<li><strong>Snapshots are sent as one message</strong>, built in memory, which limits practical dataset size.</li>
+<li><strong>No pre-vote.</strong> A node rejoining after a partition forces one extra, harmless election.</li>
+<li><strong>Full-merge compaction</strong> rewrites all data each time. Client session records are never expired.</li>
+<li><strong>No range scans over the network.</strong> Only the embedded engine offers <code>iter()</code>.</li>
+</ul>
+<h3>Further reading</h3>
+<div class="cards">
+<a class="card" href="https://github.com/berdfandrade/ironclad/blob/main/docs/ARCHITECTURE.md"><strong>Architecture</strong><span>Threads, queues, the write and read paths, on-disk formats.</span></a>
+<a class="card" href="https://github.com/berdfandrade/ironclad/blob/main/docs/CONSISTENCY.md"><strong>Consistency</strong><span>The guarantees and the invariants that make them hold.</span></a>
+<a class="card" href="https://github.com/berdfandrade/ironclad/tree/main/docs/adr"><strong>ADRs</strong><span>Why the LSM tree, the deterministic Raft core and the shared log.</span></a>
+</div>
+</section>
+
+</main>
+</div>
+
+<footer style="border-top: 1px solid var(--border)">
+<div style="max-width: 1180px; margin: 0 auto; padding: 40px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; font-size: 15px; color: var(--muted)">
+<span>Ironclad · MIT licensed</span>
+<div style="display: flex; flex-wrap: wrap; gap: 24px">
+<a href="./">Overview</a>
+<a href="https://github.com/berdfandrade/ironclad">GitHub</a>
+</div>
+</div>
+</footer>
+
+</div>
+<script>
+// Highlight the contents entry of the section being read.
+(function () {
+  var links = {};
+  document.querySelectorAll(".toc a").forEach(function (a) { links[a.hash.slice(1)] = a; });
+  if (!("IntersectionObserver" in window)) return;
+  var visible = new Set();
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id); });
+    var first = Object.keys(links).find(function (id) { return visible.has(id); });
+    if (!first) return;
+    Object.keys(links).forEach(function (id) {
+      if (id === first) links[id].setAttribute("aria-current", "true");
+      else links[id].removeAttribute("aria-current");
+    });
+  }, { rootMargin: "0px 0px -60% 0px" });
+  document.querySelectorAll(".docs-main section").forEach(function (s) { io.observe(s); });
+})();
+</script>
+</body>
+</html>
