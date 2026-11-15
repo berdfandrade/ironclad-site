@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ironclad — banco chave-valor distribuído em Rust</title>
+<meta name="description" content="Ironclad: banco de dados chave-valor distribuído escrito do zero em Rust, com storage engine LSM-tree, consenso Raft e recuperação de falhas testada.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 140'%3E%3Cpath d='M60 6 L110 22 V68 C110 102 89 123 60 134 C31 123 10 102 10 68 V22 Z' fill='%2314161A' stroke='%23C9CED6' stroke-width='12'/%3E%3Crect x='30' y='42' width='60' height='16' rx='2' fill='%23E8622C'/%3E%3Crect x='36' y='70' width='48' height='16' rx='2' fill='%23C9CED6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#14161A}
+a{color:#C9CED6}a:hover{color:#FFFFFF}
+</style>
+</head>
+<body>
+<div style="background: #14161A; color: #F2F4F7; font-family: 'Space Grotesk', sans-serif; font-size: 18px; line-height: 1.55">
+
+<header style="border-bottom: 1px solid #2A2E35">
+<nav aria-label="Principal" style="max-width: 1180px; margin: 0 auto; padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px">
+<a href="#topo" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: #F2F4F7">
+<svg width="30" height="35" viewBox="0 0 120 140" aria-hidden="true">
+<path d="M60 6 L110 22 V68 C110 102 89 123 60 134 C31 123 10 102 10 68 V22 Z" fill="none" stroke="#C9CED6" stroke-width="9" stroke-linejoin="round"></path>
+<rect x="32" y="42" width="56" height="11" rx="2" fill="#E8622C"></rect>
+<rect x="32" y="62" width="56" height="11" rx="2" fill="#C9CED6"></rect>
+<rect x="40" y="82" width="40" height="11" rx="2" fill="#C9CED6"></rect>
+</svg>
+<span style="font-size: 22px; font-weight: 700; letter-spacing: 0.06em">IRONCLAD</span>
+</a>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; font-size: 16px">
+<a href="#escrita" style="text-decoration: none">Como funciona</a>
+<a href="#arquitetura" style="text-decoration: none">Arquitetura</a>
+<a href="#garantias" style="text-decoration: none">Garantias</a>
+<a href="#roadmap" style="text-decoration: none">Roadmap</a>
+<a href="#leituras" style="text-decoration: none">Leituras</a>
+<a href="https://github.com/berdfandrade/ironclad" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border: 1px solid #3A4049; border-radius: 8px; text-decoration: none; color: #F2F4F7">GitHub</a>
+</div>
+</nav>
+</header>
+
+<section id="topo" style="max-width: 1180px; margin: 0 auto; padding: 96px 24px 104px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px">
+<div style="flex: 1 1 460px; display: flex; flex-direction: column; gap: 28px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.1em; color: #E8622C">RUST · LSM-TREE · RAFT</div>
+<h1 style="margin: 0; font-size: clamp(40px, 6vw, 68px); line-height: 1.02; font-weight: 700; letter-spacing: -0.01em">Um banco chave-valor que não perde dados quando um nó cai.</h1>
+<p style="margin: 0; font-size: 20px; color: #B4BCC6; max-width: 560px">Ironclad é um <em>distributed embedded key-value store</em> escrito em Rust: armazenamento persistente com WAL próprio, replicação por consenso Raft e recuperação de falhas testada de propósito.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 14px">
+<a href="#comecar" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 8px; background: #E8622C; color: #14161A; font-weight: 700; text-decoration: none">Começar</a>
+<a href="#arquitetura" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 8px; border: 1px solid #3A4049; color: #F2F4F7; text-decoration: none">Ver a arquitetura</a>
+</div>
+</div>
+<div id="comecar" style="flex: 1 1 420px; min-width: 0; background: #0E1013; border: 1px solid #2A2E35; border-radius: 14px; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid #2A2E35">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #3A4049"></span>
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #3A4049"></span>
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #3A4049"></span>
+<span style="margin-left: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #9AA3AE">ironclad — 3 nós</span>
+</div>
+<pre style="margin: 0; padding: 22px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.8; color: #C9CED6"><span style="color: #9AA3AE">$</span> scripts/local-cluster.sh 3
+<span style="color: #9AA3AE">cluster of 3 nodes running</span>
+<span style="color: #9AA3AE">$</span> ironclad-cli set user:123 '{"name":"Bernardo"}'
+<span style="color: #E8622C">OK</span>
+<span style="color: #9AA3AE">$</span> ironclad-cli get user:123
+{"name":"Bernardo"}
+<span style="color: #9AA3AE">$</span> ironclad-cli del user:123
+<span style="color: #E8622C">OK</span></pre>
+</div>
+</section>
+
+<section id="escrita" style="border-top: 1px solid #2A2E35; background: #181B20">
+<div style="max-width: 1180px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.1em; color: #E8622C">O CAMINHO DE UMA ESCRITA</div>
+<h2 style="margin: 0; font-size: clamp(32px, 4vw, 44px); line-height: 1.1">Um <code style="font-family: 'JetBrains Mono', monospace; font-size: 0.85em">SET</code> parece simples. Por baixo, são sete passos.</h2>
+<p style="margin: 0; color: #B4BCC6">Tudo com concorrência e sem corromper dados — inclusive se a máquina cair no meio.</p>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+<li style="padding: 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C">01</span><strong style="font-size: 19px">Recebe</strong><span style="color: #B4BCC6; font-size: 16px">A requisição chega pelo protocolo TCP binário, com cada tamanho validado.</span></li>
+<li style="padding: 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C">02</span><strong style="font-size: 19px">Valida</strong><span style="color: #B4BCC6; font-size: 16px">O Command Engine valida a chave e serializa o comando.</span></li>
+<li style="padding: 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C">03</span><strong style="font-size: 19px">Registra</strong><span style="color: #B4BCC6; font-size: 16px">O líder grava a entrada no log do Raft, com checksum CRC32.</span></li>
+<li style="padding: 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C">04</span><strong style="font-size: 19px">Replica</strong><span style="color: #B4BCC6; font-size: 16px">Os seguidores recebem a entrada, gravam em disco e confirmam.</span></li>
+<li style="padding: 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C">05</span><strong style="font-size: 19px">Commit</strong><span style="color: #B4BCC6; font-size: 16px">Com a maioria gravada em disco, a entrada está confirmada.</span></li>
+<li style="padding: 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C">06</span><strong style="font-size: 19px">Aplica</strong><span style="color: #B4BCC6; font-size: 16px">WAL e MemTable são atualizados num único lote atômico.</span></li>
+<li style="padding: 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 10px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C">07</span><strong style="font-size: 19px">Responde</strong><span style="color: #B4BCC6; font-size: 16px">O cliente recebe OK — e o dado sobrevive a um crash.</span></li>
+</ol>
+</div>
+</section>
+
+<section id="arquitetura" style="border-top: 1px solid #2A2E35">
+<div style="max-width: 1180px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; gap: 56px">
+<div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: 14px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.1em; color: #E8622C">ARQUITETURA</div>
+<h2 style="margin: 0; font-size: clamp(32px, 4vw, 44px); line-height: 1.1">Cinco camadas, cada uma com uma responsabilidade.</h2>
+<p style="margin: 0; color: #B4BCC6">O núcleo — storage engine e consenso — é implementado à mão. Bibliotecas entram só como apoio: Tokio, Bytes, Tracing.</p>
+</div>
+<div style="flex: 2 1 560px; display: flex; flex-direction: column; gap: 12px">
+<div style="padding: 22px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px"><strong style="font-size: 20px">Client API / TCP</strong><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #9AA3AE">protocolo binário · conexões · parsing</span></div>
+<div style="padding: 22px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px"><strong style="font-size: 20px">Command Engine</strong><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #9AA3AE">validação · serialização · pipeline</span></div>
+<div style="padding: 22px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px"><strong style="font-size: 20px">Consensus Layer</strong><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #9AA3AE">Raft · eleição de líder · replicação</span></div>
+<div style="padding: 22px 24px; border: 1px solid #E8622C; border-radius: 12px; background: #1B1E23; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px"><strong style="font-size: 20px">Storage Engine <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: #E8622C">o coração</span></strong><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #9AA3AE">WAL · MemTable · SSTables · Bloom filters</span></div>
+<div style="padding: 22px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px"><strong style="font-size: 20px">Persistence &amp; Recovery</strong><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #9AA3AE">checksums · snapshots · compaction</span></div>
+</div>
+</div>
+</section>
+
+<section style="border-top: 1px solid #2A2E35; background: #181B20">
+<div style="max-width: 1180px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px">
+<div style="flex: 1 1 380px; display: flex; justify-content: center">
+<svg width="100%" viewBox="0 0 400 360" style="max-width: 420px" role="img" aria-label="Cluster de cinco nós: o líder antigo caiu e um novo líder foi eleito">
+<g stroke="#3A4049" stroke-width="2" fill="none">
+<line x1="200" y1="60" x2="330" y2="155"></line><line x1="200" y1="60" x2="70" y2="155"></line>
+<line x1="330" y1="155" x2="280" y2="305"></line><line x1="70" y1="155" x2="120" y2="305"></line>
+<line x1="120" y1="305" x2="280" y2="305"></line>
+</g>
+<g stroke="#E8622C" stroke-width="2.5" stroke-dasharray="6 6" fill="none">
+<line x1="330" y1="155" x2="70" y2="155"></line><line x1="330" y1="155" x2="120" y2="305"></line>
+</g>
+<circle cx="200" cy="60" r="34" fill="#14161A" stroke="#3A4049" stroke-width="2" stroke-dasharray="4 5"></circle>
+<text x="200" y="66" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" fill="#6B7480">N1</text>
+<text x="200" y="14" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#9AA3AE">líder antigo (caiu)</text>
+<circle cx="330" cy="155" r="38" fill="#E8622C"></circle>
+<text x="330" y="161" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" font-weight="500" fill="#14161A">N2</text>
+<text x="330" y="216" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="#E8622C">novo líder</text>
+<circle cx="70" cy="155" r="34" fill="#14161A" stroke="#C9CED6" stroke-width="2"></circle>
+<text x="70" y="161" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" fill="#F2F4F7">N3</text>
+<circle cx="120" cy="305" r="34" fill="#14161A" stroke="#C9CED6" stroke-width="2"></circle>
+<text x="120" y="311" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" fill="#F2F4F7">N4</text>
+<circle cx="280" cy="305" r="34" fill="#14161A" stroke="#C9CED6" stroke-width="2"></circle>
+<text x="280" y="311" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="16" fill="#F2F4F7">N5</text>
+</svg>
+</div>
+<div style="flex: 1 1 440px; display: flex; flex-direction: column; gap: 20px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.1em; color: #E8622C">A DEMONSTRAÇÃO</div>
+<h2 style="margin: 0; font-size: clamp(32px, 4vw, 44px); line-height: 1.1">Derrube o líder. Os dados continuam lá.</h2>
+<ol style="margin: 0; padding-left: 24px; color: #B4BCC6; display: flex; flex-direction: column; gap: 8px">
+<li>Subir cinco nós.</li>
+<li>Escrever milhares de registros.</li>
+<li>Derrubar o líder abruptamente.</li>
+<li>Observar a eleição de um novo líder.</li>
+<li>Reconectar o nó antigo.</li>
+<li>Verificar que todos convergiram para o mesmo estado.</li>
+</ol>
+<p style="margin: 0; color: #F2F4F7">E tudo isso provado com <a href="https://github.com/berdfandrade/ironclad/blob/main/tests/cluster.rs">testes automatizados</a>, não com um print.</p>
+</div>
+</div>
+</section>
+
+<section id="garantias" style="border-top: 1px solid #2A2E35">
+<div style="max-width: 1180px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.1em; color: #E8622C">GARANTIAS E MEDIÇÕES</div>
+<h2 style="margin: 0; font-size: clamp(32px, 4vw, 44px); line-height: 1.1">O que separa um protótipo de infraestrutura confiável.</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+<div style="padding: 28px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.08em; color: #9AA3AE">LATÊNCIA P50</span><span style="font-size: 36px; font-weight: 700">52,7 ms</span></div>
+<div style="padding: 28px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.08em; color: #9AA3AE">LATÊNCIA P95</span><span style="font-size: 36px; font-weight: 700">147 ms</span></div>
+<div style="padding: 28px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.08em; color: #9AA3AE">LATÊNCIA P99</span><span style="font-size: 36px; font-weight: 700">196 ms</span></div>
+<div style="padding: 28px 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.08em; color: #9AA3AE">THROUGHPUT</span><span style="font-size: 36px; font-weight: 700">1.076 ops/s</span></div>
+</div>
+<p style="margin: -24px 0 0; font-size: 15px; color: #9AA3AE">Cluster de 3 nós, 64 clientes concorrentes, 100% escritas de 100 bytes, num disco com fsync de ~10 ms. Com 90% de leituras linearizáveis: 1.865 ops/s, p50 de 28 ms.</p>
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 32px; color: #C9CED6">
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>Testes de crash recovery</li>
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>Testes de concorrência</li>
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>Testes de consistência distribuída</li>
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>Testes de corrupção de dados</li>
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>Fault injection: perda de pacotes e partições</li>
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>Testes baseados em propriedades (Proptest)</li>
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>Benchmarks com Criterion</li>
+<li style="display: flex; gap: 12px"><span style="color: #E8622C; font-family: 'JetBrains Mono', monospace">✓</span>ADRs das principais decisões de arquitetura</li>
+</ul>
+</div>
+</section>
+
+<section id="roadmap" style="border-top: 1px solid #2A2E35; background: #181B20">
+<div style="max-width: 1180px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 48px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.1em; color: #E8622C">ROADMAP</div>
+<h2 style="margin: 0; font-size: clamp(32px, 4vw, 44px); line-height: 1.1">Construído em etapas, de um nó a um cluster.</h2>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px">
+<li style="padding: 20px 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C; min-width: 72px">ETAPA 1</span><strong style="flex: 1 1 220px">Single-node database</strong><span style="flex: 2 1 300px; color: #B4BCC6; font-size: 16px">Protocolo TCP, GET/SET/DELETE e armazenamento persistente.</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #E8622C; color: #14161A">concluída</span></li>
+<li style="padding: 20px 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C; min-width: 72px">ETAPA 2</span><strong style="flex: 1 1 220px">Storage engine</strong><span style="flex: 2 1 300px; color: #B4BCC6; font-size: 16px">WAL, MemTable, SSTables, Bloom filters e compaction.</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #E8622C; color: #14161A">concluída</span></li>
+<li style="padding: 20px 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C; min-width: 72px">ETAPA 3</span><strong style="flex: 1 1 220px">Concorrência</strong><span style="flex: 2 1 300px; color: #B4BCC6; font-size: 16px">Operações concorrentes, isolamento, backpressure e benchmarks.</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #E8622C; color: #14161A">concluída</span></li>
+<li style="padding: 20px 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C; min-width: 72px">ETAPA 4</span><strong style="flex: 1 1 220px">Replicação</strong><span style="flex: 2 1 300px; color: #B4BCC6; font-size: 16px">Comunicação entre nós, replicação de logs e sincronização.</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #E8622C; color: #14161A">concluída</span></li>
+<li style="padding: 20px 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C; min-width: 72px">ETAPA 5</span><strong style="flex: 1 1 220px">Raft</strong><span style="flex: 2 1 300px; color: #B4BCC6; font-size: 16px">Eleição de líder, quorum, failover e recuperação.</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #E8622C; color: #14161A">concluída</span></li>
+<li style="padding: 20px 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C; min-width: 72px">ETAPA 6</span><strong style="flex: 1 1 220px">Tolerância a falhas</strong><span style="flex: 2 1 300px; color: #B4BCC6; font-size: 16px">Crashes simulados, perda de pacotes e partições de rede.</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #E8622C; color: #14161A">concluída</span></li>
+<li style="padding: 20px 24px; background: #14161A; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #E8622C; min-width: 72px">ETAPA 7</span><strong style="flex: 1 1 220px">Ferramentas de produção</strong><span style="flex: 2 1 300px; color: #B4BCC6; font-size: 16px">Métricas, tracing, CLI administrativa, docs e benchmarks públicos.</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #E8622C; color: #14161A">concluída</span></li>
+</ol>
+</div>
+</section>
+
+<section id="leituras" style="border-top: 1px solid #2A2E35">
+<div style="max-width: 1180px; margin: 0 auto; padding: 96px 24px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 14px; max-width: 720px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; letter-spacing: 0.1em; color: #E8622C">LEITURAS QUE GUIARAM O PROJETO</div>
+<h2 style="margin: 0; font-size: clamp(32px, 4vw, 44px); line-height: 1.1">Nos ombros de quem já pensou nisso.</h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+<div style="padding: 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><strong>Designing Data-Intensive Applications</strong><span style="color: #9AA3AE; font-size: 16px">Martin Kleppmann</span></div>
+<div style="padding: 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><strong>Database Internals</strong><span style="color: #9AA3AE; font-size: 16px">Alex Petrov</span></div>
+<div style="padding: 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><strong>In Search of an Understandable Consensus Algorithm</strong><span style="color: #9AA3AE; font-size: 16px">Diego Ongaro e John Ousterhout</span></div>
+<div style="padding: 24px; border: 1px solid #2A2E35; border-radius: 12px; display: flex; flex-direction: column; gap: 6px"><strong>The Rust Programming Language</strong><span style="color: #9AA3AE; font-size: 16px">Documentação oficial</span></div>
+</div>
+</div>
+</section>
+
+<footer style="border-top: 1px solid #2A2E35">
+<div style="max-width: 1180px; margin: 0 auto; padding: 40px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; font-size: 15px; color: #9AA3AE">
+<div style="display: flex; align-items: center; gap: 12px">
+<svg width="22" height="26" viewBox="0 0 120 140" aria-hidden="true">
+<path d="M60 6 L110 22 V68 C110 102 89 123 60 134 C31 123 10 102 10 68 V22 Z" fill="none" stroke="#C9CED6" stroke-width="12" stroke-linejoin="round"></path>
+<rect x="30" y="42" width="60" height="16" rx="2" fill="#E8622C"></rect>
+<rect x="36" y="70" width="48" height="16" rx="2" fill="#C9CED6"></rect>
+</svg>
+<span>Ironclad · um projeto de Bernardo</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 24px">
+<a href="https://github.com/berdfandrade/ironclad">GitHub</a>
+<a href="#arquitetura">Arquitetura</a>
+<a href="#roadmap">Roadmap</a>
+</div>
+</div>
+</footer>
+
+</div>
+</body>
+</html>
