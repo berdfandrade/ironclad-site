@@ -30,6 +30,7 @@
 <a href="#write-path" style="text-decoration: none">How it works</a>
 <a href="#architecture" style="text-decoration: none">Architecture</a>
 <a href="#guarantees" style="text-decoration: none">Guarantees</a>
+<a href="#demo" style="text-decoration: none">Demo</a>
 <a href="#roadmap" style="text-decoration: none">Roadmap</a>
 <a href="#reading" style="text-decoration: none">Reading</a>
 <a href="docs.html" style="text-decoration: none">Docs</a>
@@ -153,7 +154,7 @@
 </div>
 </section>
 
-<section style="border-top: 1px solid var(--border); background: var(--bg-alt)">
+<section id="demo" style="border-top: 1px solid var(--border); background: var(--bg-alt)">
 <div style="max-width: 1180px; margin: 0 auto; padding: 96px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px">
 <div style="flex: 1 1 380px; display: flex; justify-content: center">
 <svg width="100%" viewBox="0 0 400 360" style="max-width: 420px" role="img" aria-label="Five-node cluster: the old leader went down and a new leader was elected">
@@ -192,6 +193,13 @@
 </ol>
 <p style="margin: 0; color: var(--text)">All of it proven by <a href="https://github.com/berdfandrade/ironclad/blob/main/tests/cluster.rs">automated tests</a>, not a screenshot.</p>
 </div>
+<figure style="flex: 1 1 100%; margin: 8px 0 0; display: flex; flex-direction: column; gap: 14px">
+<video controls preload="none" playsinline poster="assets/ironclad-demo-poster.jpg" width="1280" height="720" style="width: 100%; height: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--term-bg)" aria-describedby="demo-caption">
+<source src="assets/ironclad-demo.mp4" type="video/mp4">
+<a href="assets/ironclad-demo.mp4">Download the demo video (MP4, 57 s)</a>
+</video>
+<figcaption id="demo-caption" style="font-size: 15px; color: var(--muted)">A real session on a 3-node cluster, 57 s, no audio: write and read, 5,000 writes under load, the leader killed with SIGKILL, a new election, the old node back, every node converged. The output is unedited.</figcaption>
+</figure>
 </div>
 </section>
 
